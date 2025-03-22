@@ -2,28 +2,36 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface CreatePaperButtonProps {
   isDisabled?: boolean;
   isLoading?: boolean;
   onClick?: () => void;
+  fileData?: any;
 }
 
 const CreatePaperButton: React.FC<CreatePaperButtonProps> = ({ 
   isDisabled = false,
   isLoading = false,
-  onClick
+  onClick,
+  fileData
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
+  const navigate = useNavigate();
   
   const handleCreatePaper = () => {
     if (onClick) {
       onClick();
-    } else {
-      toast.success("Creating new paper!", {
-        description: "Your new paper will be ready momentarily."
+    } else if (fileData) {
+      // Navigate to hypotheses page with the file data
+      navigate('/hypotheses', { state: { fileData } });
+      toast.success("Analyzing data and generating hypotheses", {
+        description: "We'll help you explore different research directions."
       });
+    } else {
+      toast.error("Please upload and parse an Excel file first");
     }
   };
 

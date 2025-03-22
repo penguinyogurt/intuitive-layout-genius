@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import FileUpload from '../components/FileUpload';
@@ -67,79 +66,6 @@ const Index: React.FC = () => {
     reader.readAsBinaryString(file);
   };
 
-  const generatePaperWithAI = async (instructions: string) => {
-    if (!fileData) {
-      toast.error('Please upload and parse an Excel file first');
-      return;
-    }
-
-    setIsGenerating(true);
-    
-    try {
-      // Format data for prompt
-      const dataPreview = JSON.stringify(fileData.slice(0, 10), null, 2);
-      const totalRows = fileData.length;
-      const columns = Object.keys(fileData[0] || {}).join(', ');
-      
-      const prompt = `
-You are a research scientist analyzing the following dataset:
-
-Data columns: ${columns}
-Total records: ${totalRows}
-Data preview: ${dataPreview}
-
-${instructions}
-
-Format your response as a complete academic research paper with proper sections, including abstract, introduction, methodology, results, discussion, and conclusion. Cite any relevant literature where appropriate. Generate appropriate figures and tables descriptions based on the data.
-`;
-
-      // Make API call to Groq
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer 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'
-        },
-        body: JSON.stringify({
-          model: 'llama3-70b-8192',
-          messages: [
-            { role: 'system', content: 'You are a helpful research assistant that analyzes data and generates academic research papers.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 4000
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      const generatedContent = result.choices[0].message.content;
-      
-      setGeneratedPaper(generatedContent);
-      setIsGenerating(false);
-      
-      toast.success('Research paper generated successfully!');
-      
-      // Create a downloadable file
-      const blob = new Blob([generatedContent], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'research_paper.txt';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-    } catch (error) {
-      console.error('Error generating paper:', error);
-      toast.error('Failed to generate paper with AI');
-      setIsGenerating(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
@@ -167,16 +93,18 @@ Format your response as a complete academic research paper with proper sections,
           {/* Right column - Extra Context & Create Paper */}
           <div className="flex flex-col gap-6">
             <div className="animate-on-mount" style={{animationDelay: '150ms'}}>
-              <ExtraContext onGeneratePaper={generatePaperWithAI} />
+              <ExtraContext onGeneratePaper={(prompt) => {
+                // This is kept for backward compatibility
+                // New flow uses the multi-step process via CreatePaperButton
+                return Promise.resolve();
+              }} />
             </div>
             
             <div className="animate-on-mount" style={{animationDelay: '300ms'}}>
               <CreatePaperButton 
-                isDisabled={!fileData || isGenerating} 
+                isDisabled={!fileData} 
                 isLoading={isGenerating}
-                onClick={() => generatePaperWithAI(
-                  "Analyze the data, identify patterns, and create a comprehensive research paper with proper sections including introduction, methodology, results, discussion, and conclusion."
-                )}
+                fileData={fileData}
               />
             </div>
           </div>
