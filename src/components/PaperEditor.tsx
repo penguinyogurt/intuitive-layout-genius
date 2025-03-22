@@ -1,10 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Download, Edit, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface PaperEditorProps {
   content: string;
@@ -20,9 +22,10 @@ const PaperEditor: React.FC<PaperEditorProps> = ({
   const [editMode, setEditMode] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("preview");
   const [editedContent, setEditedContent] = useState<string>(content);
+  const previewRef = React.useRef<HTMLDivElement>(null);
 
   // Update edited content when content prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     setEditedContent(content);
   }, [content]);
 
@@ -42,16 +45,79 @@ const PaperEditor: React.FC<PaperEditorProps> = ({
     toast.success("Changes saved successfully");
   };
 
-  const handleDownload = () => {
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'research_paper.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    toast.success("Research paper downloaded");
+  const handleDownload = async () => {
+    if (!content) {
+      toast.error("No content to download");
+      return;
+    }
+
+    try {
+      // First, attempt to download as PDF
+      if (previewRef.current) {
+        toast.info("Preparing your PDF...");
+        
+        const canvas = await html2canvas(previewRef.current, {
+          scale: 2,
+          logging: false,
+          useCORS: true,
+          allowTaint: true
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        // Calculate dimensions to fit content to A4 page
+        const imgWidth = 210; // A4 width in mm
+        const imgHeight = canvas.height * imgWidth / canvas.width;
+        const pageHeight = 297; // A4 height in mm
+        
+        let heightLeft = imgHeight;
+        let position = 0;
+        
+        // Add first page
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        
+        // Add additional pages if needed
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+        
+        pdf.save("research_paper.pdf");
+        toast.success("Research paper downloaded as PDF");
+      } else {
+        // Fallback to text download if PDF generation fails
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'research_paper.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success("Research paper downloaded as text file");
+      }
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      toast.error("Failed to generate PDF, downloading as text instead");
+      
+      // Fallback to text download
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'research_paper.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   // Convert plain text to HTML with proper formatting for the preview
@@ -108,7 +174,7 @@ const PaperEditor: React.FC<PaperEditorProps> = ({
               disabled={isLoading || !content}
             >
               <Download className="h-4 w-4 mr-1" />
-              Download
+              Download PDF
             </Button>
           </div>
         </div>
@@ -134,6 +200,7 @@ const PaperEditor: React.FC<PaperEditorProps> = ({
             </div>
           ) : (
             <div 
+              ref={previewRef}
               className="p-8 prose max-w-none overflow-auto h-[calc(100vh-220px)]"
               dangerouslySetInnerHTML={{ __html: formatContentForPreview(content) }}
             />

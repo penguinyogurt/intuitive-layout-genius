@@ -7,6 +7,9 @@ import ChatSidebar from '../components/ChatSidebar';
 import { toast } from 'sonner';
 import { SidebarProvider } from '@/components/ui/sidebar';
 
+// Groq API key (use environment variable in production)
+const GROQ_API_KEY = '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';
+
 const EditorPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,20 +49,35 @@ Based on this data, please write a complete academic research paper exploring th
 ${hypothesis.title}
 ${hypothesis.description}
 
-Format your response as a complete academic research paper with proper sections, including abstract, introduction, methodology, results, discussion, and conclusion. Cite any relevant literature where appropriate. Generate appropriate figures and tables descriptions based on the data.
+Format your response as a complete academic research paper with proper sections following professional academic standards:
+1. Title Page - Include a descriptive title, author information, and date
+2. Abstract - A concise summary of the research (150-250 words)
+3. Introduction - Background information, problem statement, and significance of the research
+4. Literature Review - Synthesize relevant prior research
+5. Methodology - Detailed explanation of data analysis methods
+6. Results - Present findings with appropriate statistical analysis
+7. Discussion - Interpret results in context of the hypothesis and existing literature
+8. Conclusion - Summarize findings, implications, and suggestions for future research
+9. References - Properly formatted citations
+
+Use markdown formatting to structure the document. Include appropriate headers, paragraphs, lists, and emphasis. 
+Describe data visualizations and statistical tables that would support your analysis, even if you cannot generate actual images.
+Make sure the paper follows professional academic standards and formatting conventions.
 `;
 
+      console.log("Sending request to Groq API...");
+      
       // Make API call to Groq
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer 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'
+          'Authorization': `Bearer ${GROQ_API_KEY}`
         },
         body: JSON.stringify({
           model: 'llama3-70b-8192',
           messages: [
-            { role: 'system', content: 'You are a helpful research assistant that analyzes data and generates academic research papers.' },
+            { role: 'system', content: 'You are a professional academic researcher with expertise in writing research papers according to academic standards. Format your response in proper markdown.' },
             { role: 'user', content: prompt }
           ],
           temperature: 0.7,
@@ -68,21 +86,25 @@ Format your response as a complete academic research paper with proper sections,
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Groq API error response:', errorData);
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
+      console.log("Received response from Groq API");
       const generatedContent = result.choices[0].message.content;
       
       setPaperContent(generatedContent);
-      setIsGenerating(false);
+      toast.success("Research paper generated successfully");
       
     } catch (error) {
       console.error('Error generating paper:', error);
       toast.error('Failed to generate research paper');
-      setIsGenerating(false);
       // Set fallback content
       setPaperContent("# Error Generating Research Paper\n\nWe encountered an issue generating the research paper based on your selected hypothesis. Please try again or select a different hypothesis.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -96,18 +118,18 @@ Format your response as a complete academic research paper with proper sections,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer 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'
+          'Authorization': `Bearer ${GROQ_API_KEY}`
         },
         body: JSON.stringify({
           model: 'llama3-70b-8192',
           messages: [
             { 
               role: 'system', 
-              content: 'You are a helpful research assistant. You are helping a user modify their research paper. Provide the full updated research paper with the requested changes incorporated.' 
+              content: 'You are a professional academic researcher with expertise in writing research papers according to academic standards. Format your response in proper markdown. Provide the full updated research paper with the requested changes incorporated.' 
             },
             { 
               role: 'user', 
-              content: `Here is my current research paper:\n\n${paperContent}\n\nPlease update it based on this request: ${prompt}` 
+              content: `Here is my current research paper:\n\n${paperContent}\n\nPlease update it based on this request: ${prompt}\n\nMaintain professional academic formatting and standards in your response.` 
             }
           ],
           temperature: 0.7,
@@ -116,6 +138,8 @@ Format your response as a complete academic research paper with proper sections,
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Groq API error response:', errorData);
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
@@ -123,6 +147,7 @@ Format your response as a complete academic research paper with proper sections,
       const updatedContent = result.choices[0].message.content;
       
       setPaperContent(updatedContent);
+      toast.success("Research paper updated successfully");
       return true;
       
     } catch (error) {
