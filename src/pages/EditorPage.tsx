@@ -34,7 +34,7 @@ const EditorPage: React.FC = () => {
     setIsGenerating(true);
     try {
       // Format data for prompt
-      const dataPreview = JSON.stringify(data.slice(0, 10), null, 2);
+      const dataPreview = JSON.stringify(data.slice(0, 5), null, 2); // Reduced to 5 rows
       const totalRows = data.length;
       const columns = Object.keys(data[0] || {}).join(', ');
       
@@ -75,13 +75,13 @@ Make sure the paper follows professional academic standards and formatting conve
           'Authorization': `Bearer ${GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'llama3-70b-8192',
+          model: 'llama3-8b-8192', // Use smaller model to avoid rate limits
           messages: [
-            { role: 'system', content: 'You are a professional academic researcher with expertise in writing research papers according to academic standards. Format your response in proper markdown.' },
+            { role: 'system', content: 'You are a professional academic researcher with expertise in writing research papers according to academic standards. Format your response in proper markdown following all professional academic conventions.' },
             { role: 'user', content: prompt }
           ],
           temperature: 0.7,
-          max_tokens: 4000
+          max_tokens: 3000 // Reduced token count
         })
       });
 
@@ -102,7 +102,16 @@ Make sure the paper follows professional academic standards and formatting conve
       console.error('Error generating paper:', error);
       toast.error('Failed to generate research paper');
       // Set fallback content
-      setPaperContent("# Error Generating Research Paper\n\nWe encountered an issue generating the research paper based on your selected hypothesis. Please try again or select a different hypothesis.");
+      setPaperContent(`# Error Generating Research Paper
+
+We encountered an issue generating the research paper based on your selected hypothesis. Please try again or select a different hypothesis.
+
+## Possible reasons:
+- API rate limit exceeded (please try again in a minute)
+- Network connectivity issues
+- Data format issues
+
+If you continue to experience problems, please try using a smaller dataset or a different hypothesis.`);
     } finally {
       setIsGenerating(false);
     }
@@ -121,19 +130,19 @@ Make sure the paper follows professional academic standards and formatting conve
           'Authorization': `Bearer ${GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'llama3-70b-8192',
+          model: 'llama3-8b-8192', // Use smaller model to avoid rate limits
           messages: [
             { 
               role: 'system', 
-              content: 'You are a professional academic researcher with expertise in writing research papers according to academic standards. Format your response in proper markdown. Provide the full updated research paper with the requested changes incorporated.' 
+              content: 'You are a professional academic researcher with expertise in writing research papers according to academic standards. Format your response in proper markdown following professional academic conventions.' 
             },
             { 
               role: 'user', 
-              content: `Here is my current research paper:\n\n${paperContent}\n\nPlease update it based on this request: ${prompt}\n\nMaintain professional academic formatting and standards in your response.` 
+              content: `Here is my current research paper:\n\n${paperContent}\n\nPlease update it based on this request: ${prompt}\n\nMaintain professional academic formatting and standards in your response. The entire response should be the complete updated paper in markdown format.` 
             }
           ],
           temperature: 0.7,
-          max_tokens: 4000
+          max_tokens: 3000 // Reduced token count
         })
       });
 

@@ -52,15 +52,26 @@ For each hypothesis:
 2. Write a brief description explaining the hypothesis and why it's interesting (2-3 sentences)
 3. Make sure each hypothesis explores a different aspect of the data
 
-Format your response as JSON:
+Format your response as a valid JSON array with this exact structure:
 [
   {
     "id": 1,
     "title": "Hypothesis 1 title",
     "description": "Description of hypothesis 1"
   },
-  ...
+  {
+    "id": 2,
+    "title": "Hypothesis 2 title",
+    "description": "Description of hypothesis 2"
+  },
+  {
+    "id": 3, 
+    "title": "Hypothesis 3 title",
+    "description": "Description of hypothesis 3"
+  }
 ]
+
+Ensure your response is valid, parseable JSON with no explanatory text before or after.
 `;
 
       // Make API call to Groq
@@ -71,22 +82,34 @@ Format your response as JSON:
           'Authorization': 'Bearer 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'
         },
         body: JSON.stringify({
-          model: 'llama3-70b-8192',
+          model: 'llama3-8b-8192',  // Use a smaller model to avoid rate limits
           messages: [
-            { role: 'system', content: 'You are a helpful research assistant that analyzes data and generates research hypotheses.' },
+            { role: 'system', content: 'You are a helpful research assistant that analyzes data and generates research hypotheses. Always respond with valid JSON only.' },
             { role: 'user', content: prompt }
           ],
           temperature: 0.7,
-          max_tokens: 2000
+          max_tokens: 1000  // Reduced token count
         })
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Groq API error response:', errorData);
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
-      const generatedHypotheses = JSON.parse(result.choices[0].message.content);
+      console.log("Raw Groq response:", result.choices[0].message.content);
+      
+      // Ensure we're getting valid JSON
+      let generatedHypotheses;
+      try {
+        generatedHypotheses = JSON.parse(result.choices[0].message.content);
+      } catch (parseError) {
+        console.error("JSON parsing error:", parseError);
+        // Fallback hypotheses if parsing fails
+        throw new Error("Failed to parse API response. The response was not valid JSON.");
+      }
       
       setHypotheses(generatedHypotheses);
       setIsLoading(false);
