@@ -6,11 +6,13 @@ import { toast } from 'sonner';
 interface FileUploadProps {
   maxFileSize: string;
   supportedFileTypes: string[];
+  onFilesSelected?: (files: File[]) => void;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({ 
   maxFileSize = "90GB", 
-  supportedFileTypes = ["CSV", "XLSX", "JSON"] 
+  supportedFileTypes = ["CSV", "XLSX", "JSON"],
+  onFilesSelected
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
@@ -46,16 +48,23 @@ const FileUpload: React.FC<FileUploadProps> = ({
         description: "Files ready for upload."
       });
       console.log('Files dropped:', files);
+      if (onFilesSelected) {
+        onFilesSelected(files);
+      }
     }
-  }, []);
+  }, [onFilesSelected]);
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
+      const filesArray = Array.from(files);
       toast.success(`${files.length} file(s) selected`, {
         description: "Files ready for upload."
       });
       console.log('Files selected:', files);
+      if (onFilesSelected) {
+        onFilesSelected(filesArray);
+      }
     }
   };
 
